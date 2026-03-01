@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PulseNet - Connect in Real-Time</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="gradient-bg">
+        <div class="gradient-sphere sphere-1"></div>
+        <div class="gradient-sphere sphere-2"></div>
+        <div class="gradient-sphere sphere-3"></div>
+    </div>
+
+    <nav class="navbar glass-effect">
+        <div class="nav-container">
+            <div class="nav-left">
+                <a href="/" class="logo">
+                    <span class="logo-text">PulseNet</span>
+                    <span class="logo-dot"></span>
+                </a>
+            </div>
+            <div class="nav-right">
+                <button id="logoutBtn" class="btn btn-outline btn-sm">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="feed-layout">
+            <!-- Create Post Section -->
+            <div class="create-post-card glass-effect card-hover">
+                <div class="card-header">
+                    <h2>Share your pulse</h2>
+                </div>
+                <div class="card-body">
+                    <textarea id="postContent" placeholder="What's on your mind?" maxlength="500" class="post-input"></textarea>
+                    <div class="post-actions">
+                        <span class="char-count"><span id="charCount">0</span>/500</span>
+                        <button id="createPostBtn" class="btn btn-primary">
+                            <i class="fas fa-pulse"></i>
+                            <span>Pulse</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feed Filters -->
+            <div class="feed-filters glass-effect">
+                <button class="filter-btn active" data-filter="all">All Pulses</button>
+                <button class="filter-btn" data-filter="following">Following</button>
+            </div>
+
+            <!-- Posts Feed -->
+            <div id="feedContainer" class="feed-container">
+                <!-- Posts will be dynamically inserted here -->
+                <div class="loading-state">
+                    <div class="loader"></div>
+                    <p>Loading pulses...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
+        import { getAuth, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js';
+        import { getFirestore, collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js';
+        import { firebaseConfig } from './js/firebase.js';
+        import { FeedManager } from './js/feed.js';
+        import { UIManager } from './js/ui.js';
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Check authentication
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // Get user data from Firestore
+            const userDoc = await getDoc(doc(db, 'users', user.uid));
+            if (userDoc.exists()) {
+                window.currentUser = { uid: user.uid, ...userDoc.data() };
+                initializeFeed();
+            }
+        });
+
+        function initializeFeed() {
+            const feedManager = new FeedManager(db, auth, window.currentUser);
+            const uiManager = new UIManager();
+
+            // Handle logout
+            document.getElementById('logoutBtn').addEventListener('click', async () => {
+                try {
+                    await signOut(auth);
+                    uiManager.showToast('Logged out successfully', 'success');
+                } catch (error) {
+                    uiManager.showToast('Error logging out', 'error');
+                }
+            });
+
+            // Handle post creation
+            document.getElementById('createPostBtn').addEventListener('click', async () => {
+                const content = document.getElementById('postContent').value.trim();
+                if (!content) {
+                    uiManager.showToast('Please write something', 'warning');
+                    return;
+                }
+
+                try {
+                    await addDoc(collection(db, 'posts'), {
+                        userId: window.currentUser.uid,
+                        content: content,
+                        likes: [],
+                        createdAt: serverTimestamp()
+                    });
+                    
+                    document.getElementById('postContent').value = '';
+                    document.getElementById('charCount').textContent = '0';
+                    uiManager.showToast('Post created!', 'success');
+                } catch (error) {
+                    uiManager.showToast('Error creating post', 'error');
+                }
+            });
+
+            // Character counter
+            document.getElementById('postContent').addEventListener('input', (e) => {
+                document.getElementById('charCount').textContent = e.target.value.length;
+            });
+
+            // Load posts with real-time updates
+            const postsQuery = query(collection(db, 'posts'), orderBy('createdAt', 'desc'));
+            onSnapshot(postsQuery, (snapshot) => {
+                feedManager.renderFeed(snapshot.docs);
+            });
+        }
+    </script>
+</body>
+</html>

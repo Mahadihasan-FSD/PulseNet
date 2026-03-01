@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PulseNet - Profile</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="gradient-bg">
+        <div class="gradient-sphere sphere-1"></div>
+        <div class="gradient-sphere sphere-2"></div>
+        <div class="gradient-sphere sphere-3"></div>
+    </div>
+
+    <nav class="navbar glass-effect">
+        <div class="nav-container">
+            <div class="nav-left">
+                <a href="/" class="logo">
+                    <span class="logo-text">PulseNet</span>
+                    <span class="logo-dot"></span>
+                </a>
+            </div>
+            <div class="nav-right">
+                <a href="index.html" class="btn btn-outline btn-sm">
+                    <i class="fas fa-home"></i>
+                    <span>Home</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="profile-layout">
+            <!-- Profile Header -->
+            <div class="profile-header glass-effect">
+                <div class="profile-cover"></div>
+                <div class="profile-info">
+                    <div class="profile-avatar">
+                        <i class="fas fa-user-circle"></i>
+                    </div>
+                    <div class="profile-details">
+                        <h1 id="profileUsername">Loading...</h1>
+                        <p id="profileEmail" class="profile-email"></p>
+                        <div class="profile-stats">
+                            <div class="stat">
+                                <span id="postsCount" class="stat-value">0</span>
+                                <span class="stat-label">Posts</span>
+                            </div>
+                            <div class="stat">
+                                <span id="followersCount" class="stat-value">0</span>
+                                <span class="stat-label">Followers</span>
+                            </div>
+                            <div class="stat">
+                                <span id="followingCount" class="stat-value">0</span>
+                                <span class="stat-label">Following</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="profile-actions">
+                        <button id="followBtn" class="btn btn-primary" style="display: none;">
+                            <i class="fas fa-user-plus"></i>
+                            <span>Follow</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User's Posts -->
+            <div class="profile-posts">
+                <h2 class="section-title">Pulses</h2>
+                <div id="userPosts" class="feed-container">
+                    <div class="loading-state">
+                        <div class="loader"></div>
+                        <p>Loading posts...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="toast" class="toast"></div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
+        import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js';
+        import { getFirestore, doc, getDoc, collection, query, where, orderBy, onSnapshot, updateDoc, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js';
+        import { firebaseConfig } from './js/firebase.js';
+        import { ProfileManager } from './js/profile.js';
+        import { UIManager } from './js/ui.js';
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const uiManager = new UIManager();
+
+        // Get profile ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const profileId = urlParams.get('id');
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            if (!profileId) {
+                window.location.href = `profile.html?id=${user.uid}`;
+                return;
+            }
+
+            const profileManager = new ProfileManager(db, auth, user);
+            await profileManager.loadProfile(profileId);
+        });
+    </script>
+</body>
+</html>
