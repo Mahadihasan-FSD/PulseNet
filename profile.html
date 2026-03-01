@@ -36,36 +36,29 @@
         <div class="profile-layout">
             <!-- Profile Header -->
             <div class="profile-header glass-effect">
-                <div class="profile-cover"></div>
-                <div class="profile-info">
-                    <div class="profile-avatar">
-                        <i class="fas fa-user-circle"></i>
-                    </div>
-                    <div class="profile-details">
-                        <h1 id="profileUsername">Loading...</h1>
-                        <p id="profileEmail" class="profile-email"></p>
-                        <div class="profile-stats">
-                            <div class="stat">
-                                <span id="postsCount" class="stat-value">0</span>
-                                <span class="stat-label">Posts</span>
-                            </div>
-                            <div class="stat">
-                                <span id="followersCount" class="stat-value">0</span>
-                                <span class="stat-label">Followers</span>
-                            </div>
-                            <div class="stat">
-                                <span id="followingCount" class="stat-value">0</span>
-                                <span class="stat-label">Following</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="profile-actions">
-                        <button id="followBtn" class="btn btn-primary" style="display: none;">
-                            <i class="fas fa-user-plus"></i>
-                            <span>Follow</span>
-                        </button>
-                    </div>
-                </div>
+                <!-- Replace profile-cover div with this -->
+<div class="profile-cover" id="profileCover" 
+     style="background-image: url('assets/default-cover.jpg')">
+    
+    <!-- Show upload overlay only for own profile -->
+    <div class="cover-upload-overlay" id="coverUploadOverlay" style="display: none;">
+        <label for="coverUpload" class="cover-upload-label">
+            <i class="fas fa-camera"></i>
+            <span>Change Cover</span>
+        </label>
+        <input type="file" id="coverUpload" accept="image/*">
+    </div>
+    
+    <!-- Loading indicator -->
+    <div class="cover-loading" id="coverLoading" style="display: none;">
+        <div class="loader"></div>
+    </div>
+</div>
+
+<!-- Add after profile stats in profile-details -->
+<div class="profile-bio" id="profileBio">
+    <p>No bio yet</p>
+</div>
             </div>
 
             <!-- User's Posts -->
@@ -83,9 +76,9 @@
 
     <div id="toast" class="toast"></div>
 
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
-        import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js';
+    <!-- <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+        import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
         import { getFirestore, doc, getDoc, collection, query, where, orderBy, onSnapshot, updateDoc, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js';
         import { firebaseConfig } from './js/firebase.js';
         import { ProfileManager } from './js/profile.js';
@@ -114,6 +107,47 @@
             const profileManager = new ProfileManager(db, auth, user);
             await profileManager.loadProfile(profileId);
         });
-    </script>
+    </script> -->
+    <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+    import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
+    import { getFirestore } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js';
+    import { firebaseConfig } from './js/firebase.js';
+    import { ProfileManager } from './js/profile.js';
+    import { UIManager } from './js/ui.js';
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const uiManager = new UIManager();
+
+    // Get profile ID from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const profileId = urlParams.get('id');
+
+    let profileManager;
+
+    onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+            window.location.href = 'login.html';
+            return;
+        }
+
+        if (!profileId) {
+            window.location.href = `profile.html?id=${user.uid}`;
+            return;
+        }
+
+        profileManager = new ProfileManager(db, auth, user);
+        await profileManager.loadProfile(profileId);
+    });
+
+    // Clean up on page unload
+    window.addEventListener('beforeunload', () => {
+        if (profileManager) {
+            profileManager.cleanup();
+        }
+    });
+</script>
 </body>
 </html>
